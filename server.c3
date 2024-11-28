@@ -3,6 +3,7 @@ import std::collections::list;
 import std::net::tcp;
 import std::io;
 import std::core::mem;
+import std::core::dstring;
 def RequestHandler = fn Response (Request req);
 
 struct Server {
@@ -38,26 +39,23 @@ macro Server.@handle(&server, String path = "/"; @body(req, resp)) {
         io::printfn("Failed to accept client: %s", err);
         return;
     }
-    list::List(<char>) reqs;
-    reqs.new_init();
-    while (!((String)reqs.to_tarray()).contains("\r\n\r\n")) {
+    DString reqs = dstring::new();
+    while (!(reqs.tcopy_str().contains("\r\n\r\n"))) {
         if (try new_char = s.read_byte()) {
             // io::printn(new_char);
-            reqs.push(new_char);
+            reqs.append_char(new_char);
         }
     }
-    String req_str = (String)reqs.to_tarray();
+    String req_str = reqs.tcopy_str();
     Request* req = parse_request(req_str);
-    list::List(<char>) body_reqs;
-    body_reqs.new_init();
+    DString body_reqs = dstring::new();
     if (req.content_length > 0) {
         while (body_reqs.len() < req.content_length) {
             if (try new_char = s.read_byte()) {
-                body_reqs.push(new_char);
+                body_reqs.append_char(new_char);
             }
         }
-        req.body = (String)body_reqs.to_tarray();
-        body_reqs.free();
+        req.body = body_reqs.copy_str();
     }
 
     // char[1024] req;
